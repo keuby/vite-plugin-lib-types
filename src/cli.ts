@@ -15,8 +15,12 @@ async function main() {
     throw err;
   });
   await Promise.all(
-    Object.values(result).map(({ fileName, filePath }) => {
+    Object.values(result).map(async ({ fileName, filePath }) => {
       const distPath = path.resolve(outDir, fileName);
+      const distDir = path.dirname(distPath);
+      if (!fs.existsSync(distDir)) {
+        await fs.mkdir(distDir, { recursive: true });
+      }
       return fs.copyFile(filePath, distPath);
     })
   );
