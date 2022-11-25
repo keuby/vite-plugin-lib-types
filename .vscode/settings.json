@@ -1,0 +1,15 @@
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true,
+    "source.fixAll.stylelint": true
+  },
+  "files.associations": {
+    "*.svg": "html",
+    "*.env*": "ini",
+    "api-*.json": "jsonc"
+  },
+  "prettier.enable": true,
+  "eslint.validate": ["vue", "ts", "tsx"]
+}
