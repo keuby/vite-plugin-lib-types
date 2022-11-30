@@ -4,7 +4,13 @@ import glob from 'fast-glob';
 import fs from 'fs-extra';
 import { resolve, readFile } from 'tsconfig';
 import { Extractor, ExtractorConfig } from '@microsoft/api-extractor';
-import { formatTsConfigPattern, isPlainObject, isString } from './utils';
+import {
+  formatTsConfigPattern,
+  getPkgJson,
+  getPkgName,
+  isPlainObject,
+  isString,
+} from './utils';
 import pkg from '../package.json';
 import type { Options } from './types';
 
@@ -14,7 +20,6 @@ export async function build(
   options: Options
 ) {
   const {
-    fileName = (v) => v + '.d.ts',
     tsconfig: {
       compilerOptions = {},
       include: inputInclude = [],
@@ -122,6 +127,15 @@ export async function build(
   const jsonPath = fs.existsSync(localJsonPath)
     ? localJsonPath
     : require.resolve(`${pkg.name}/api-extractor.json`);
+
+  let fileName = options.fileName;
+
+  if (!fileName) {
+    fileName =
+      Object.keys(normalizedEntries).length === 1
+        ? getPkgName(getPkgJson(root).name)
+        : (v: string) => v + '.d.ts';
+  }
 
   const promises = Object.entries(normalizedEntries).map(
     async ([entryName, entryFile]) => {
