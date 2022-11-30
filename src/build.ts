@@ -133,7 +133,7 @@ export async function build(
   if (!fileName) {
     fileName =
       Object.keys(normalizedEntries).length === 1
-        ? getPkgName(getPkgJson(root).name)
+        ? getPkgName(getPkgJson(root).name) + '.d.ts'
         : (v: string) => v + '.d.ts';
   }
 
