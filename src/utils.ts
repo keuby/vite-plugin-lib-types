@@ -1,6 +1,6 @@
 import type { PackageData } from 'vite';
 import fs from 'fs-extra';
-import path from 'path';
+import path from 'pathe';
 
 export function formatTsConfigPattern(root: string, pattern: string[]): string[] {
   return pattern.map((item) => {
