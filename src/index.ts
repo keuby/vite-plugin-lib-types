@@ -16,11 +16,12 @@ export default function VitePluginLibTypes(options: Options = {}): Plugin {
 
       const result = await build(root, entry, options);
       const ps = Object.values(result).map(async ({ fileName, filePath }) => {
+        const source = await readFile(filePath, 'utf-8');
         emitFiles.push({
           type: 'asset',
           name: path.basename(filePath),
           fileName: fileName,
-          source: await readFile(filePath),
+          source: (await options.transform?.(source)) ?? source,
         });
       });
       await Promise.all(ps);

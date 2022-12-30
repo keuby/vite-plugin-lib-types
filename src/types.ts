@@ -10,4 +10,5 @@ export interface Options {
   tsconfigPath?: string;
   apiExtractorConfigPath?: string;
   fileName?: string | ((entryName: string) => string);
+  transform?(code: string): string | Promise<string> | undefined;
 }
