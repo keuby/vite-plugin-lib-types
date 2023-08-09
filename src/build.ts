@@ -13,7 +13,8 @@ export async function createProject(options: UserOptions) {
   const {
     root = process.cwd(),
     parsers = [createVueParser()],
-    tempDir = 'node_modules/.temp',
+    outDir = 'dist',
+    tempDir = path.join(outDir, '.temp'),
     tsconfig: {
       compilerOptions = {},
       include: inputInclude = [],
