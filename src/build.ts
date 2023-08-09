@@ -13,11 +13,12 @@ import {
 } from './utils';
 import { name as packageName } from '../package.json';
 import type { UserOptions } from './types';
+import { createVueParser } from './parser';
 
 export async function createProject(options: UserOptions) {
   const {
     root = process.cwd(),
-    parsers = [],
+    parsers = [createVueParser()],
     tempDir = '.temp',
     tsconfig: {
       compilerOptions = {},

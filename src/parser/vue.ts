@@ -12,7 +12,7 @@ export interface VueParserOptions {
   scriptCompileOptions?: SFCScriptCompileOptions;
 }
 
-export function createVueParser(options: VueParserOptions): Parser {
+export function createVueParser(options: VueParserOptions = {}): Parser {
   const { parse, compileScript } = require('vue/compiler-sfc');
   return (filePath, rawCode) => {
     if (!filePath.endsWith('.vue')) return;
