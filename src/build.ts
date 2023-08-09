@@ -11,21 +11,19 @@ import {
   isPlainObject,
   isString,
 } from './utils';
-import pkg from '../package.json';
-import type { Options } from './types';
+import { name as packageName } from '../package.json';
+import type { UserOptions } from './types';
 
-export async function build(
-  root: string,
-  entry: string | string[] | { [entryAlias: string]: string },
-  options: Options
-) {
+export async function createProject(options: UserOptions) {
   const {
+    root = process.cwd(),
+    parsers = [],
+    tempDir = '.temp',
     tsconfig: {
       compilerOptions = {},
       include: inputInclude = [],
       exclude: inputExclude = [],
     } = {},
-    apiExtractorConfigPath = 'api-extractor.json',
     tsconfigPath = await resolve(root),
   } = options;
 
@@ -33,8 +31,7 @@ export async function build(
     throw new Error('tsconfig not found');
   }
 
-  const typesTempDir = path.join(root, '.temp');
-  const typesDistDir = path.join(root, 'node_modules/.temp');
+  const typesAbsoluteDir = path.resolve(root, tempDir);
   const tsconfig = await readFile(tsconfigPath);
   const include: string[] = tsconfig.include ?? ['**/*.{ts,tsx}'];
   const exclude: string[] = tsconfig.exclude ?? ['node_modules/**', 'dist/**'];
@@ -44,7 +41,7 @@ export async function build(
       ...compilerOptions,
       rootDir: root,
       baseUrl: root,
-      outDir: typesTempDir,
+      outDir: typesAbsoluteDir,
       declaration: true,
       preserveSymlinks: true,
     },
@@ -62,36 +59,32 @@ export async function build(
     onlyFiles: true,
   });
 
+  const parseFile = async (filePath: string, code: string) => {
+    for (const parser of parsers) {
+      const parseResult = await parser(filePath, code, { root });
+      if (parseResult != null) {
+        return parseResult;
+      }
+    }
+    return null;
+  };
+
   await Promise.all(
     files.map(async (file) => {
-      if (file.endsWith('.vue')) {
-        const { parse, compileScript } = await import('@vue/compiler-sfc');
-        const sfc = parse(await fs.readFile(file, 'utf-8'));
-        const { script, scriptSetup } = sfc.descriptor;
-        if (script || scriptSetup) {
-          let isTS = false;
-          let isTSX = false;
-          if (script) {
-            if (script.lang === 'ts') isTS = true;
-            if (script.lang === 'tsx') isTSX = true;
-          } else if (scriptSetup) {
-            if (scriptSetup.lang === 'ts') isTS = true;
-            if (scriptSetup.lang === 'tsx') isTSX = true;
-          }
-          const compiled = compileScript(sfc.descriptor, {
-            id: 'xxx',
-            inlineTemplate: true,
-          });
-
-          project.createSourceFile(
-            file + (isTS ? '.ts' : isTSX ? '.tsx' : '.js'),
-            compiled.content
-          );
-        }
-      } else {
+      const rawCode = await fs.readFile(file, 'utf-8');
+      const parsedResult = await parseFile(file, rawCode);
+      if (parsedResult == null) {
         project.addSourceFileAtPath(file);
+      } else if (typeof parsedResult === 'string') {
+        project.createSourceFile(file, parsedResult);
+      } else if (typeof parsedResult === 'object') {
+        const { code, fileName } = parsedResult;
+        project.createSourceFile(
+          fileName ? path.join(path.dirname(file), fileName) : file,
+          code,
+        );
       }
-    })
+    }),
   );
 
   const diagnostics = project.getPreEmitDiagnostics();
@@ -100,13 +93,28 @@ export async function build(
     throw new Error('typings compile error');
   }
 
-  if (fs.existsSync(typesTempDir)) {
-    await fs.emptyDir(typesTempDir);
-  } else {
-    await fs.mkdir(typesTempDir, { recursive: true });
+  return project;
+}
+
+export interface BuildTypesOptions extends UserOptions {
+  entry: string | string[] | { [entryAlias: string]: string };
+}
+
+export async function buildTypes(options: BuildTypesOptions) {
+  const {
+    root = process.cwd(),
+    entry,
+    tempDir = '.temp',
+    tsconfigPath = await resolve(root),
+    apiExtractorConfigPath = 'api-extractor.json',
+  } = options;
+
+  if (!tsconfigPath) {
+    throw new Error('tsconfig not found');
   }
 
-  await project.emit({ emitOnlyDtsFiles: true });
+  const typesTempDir = path.resolve(root, tempDir);
+  const typesDistDir = path.resolve(root, 'node_modules/.temp');
 
   let normalizedEntries: { [name: string]: string };
 
@@ -119,14 +127,14 @@ export async function build(
         const ext = path.extname(entryFile);
         const entryName = path.basename(entryFile).replace(ext, '');
         return [entryName, entryFile];
-      })
+      }),
     );
   }
 
   const localJsonPath = path.resolve(root, apiExtractorConfigPath);
   const jsonPath = fs.existsSync(localJsonPath)
     ? localJsonPath
-    : require.resolve(`${pkg.name}/api-extractor.json`);
+    : require.resolve(`${packageName}/api-extractor.json`);
 
   let fileName = options.fileName;
 
@@ -146,17 +154,17 @@ export async function build(
         relEntryFileDir,
         isTsFile
           ? entryFileName.replace(path.extname(entryFile), '.d.ts')
-          : entryFileName + '.d.ts'
+          : entryFileName + '.d.ts',
       );
 
-      const distFilePath = path.join(
+      const distFilePath = path.resolve(
         typesDistDir,
-        isString(fileName) ? fileName : fileName(entryName)
+        isString(fileName) ? fileName : fileName!(entryName),
       );
       const configObject = ExtractorConfig.loadFile(jsonPath);
       configObject.projectFolder = root;
-      configObject.dtsRollup.untrimmedFilePath = distFilePath;
-      configObject.mainEntryPointFilePath = path.join(typesTempDir, dtsPath);
+      configObject.dtsRollup!.untrimmedFilePath = distFilePath;
+      configObject.mainEntryPointFilePath = path.resolve(typesTempDir, dtsPath);
       const extractorConfig = ExtractorConfig.prepare({
         configObject: configObject,
         configObjectFullPath: jsonPath,
@@ -173,12 +181,7 @@ export async function build(
           filePath: distFilePath,
         },
       ] as const;
-    }
+    },
   );
-
-  try {
-    return Object.fromEntries(await Promise.all(promises));
-  } finally {
-    fs.rm(typesTempDir, { recursive: true });
-  }
+  return Object.fromEntries(await Promise.all(promises));
 }
