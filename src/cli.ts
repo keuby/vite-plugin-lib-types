@@ -18,19 +18,21 @@ async function main() {
     { outDir, tempDir },
   );
   try {
+    if (args.emptyDir) {
+      await fs.rm(outDir, { recursive: true });
+    }
+    await fs.mkdir(outDir, { recursive: true });
     const project = await createProject(options);
     await project.emit({ emitOnlyDtsFiles: true });
-    const buildResult = await buildTypes(options);
-    // await Promise.all(
-    //   Object.values(buildResult).map(async ({ fileName, filePath }) => {
-    //     const distPath = path.resolve(outDir, fileName);
-    //     const distDir = path.dirname(distPath);
-    //     if (!fs.existsSync(distDir)) {
-    //       await fs.mkdir(distDir, { recursive: true });
-    //     }
-    //     return fs.copyFile(filePath, distPath);
-    //   }),
-    // );
+    const chunks = await buildTypes(options);
+    await Promise.all(
+      chunks.map((chunk) => {
+        const fileName = chunk.fileName;
+        const content = chunk.type === 'asset' ? chunk.source : chunk.code;
+        const filePath = path.resolve(outDir, fileName);
+        return fs.writeFile(filePath, content);
+      }),
+    );
   } finally {
     await fs.rm(tempDir, { recursive: true });
   }

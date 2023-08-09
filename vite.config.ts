@@ -3,7 +3,7 @@ import LibTypes from './src';
 import pkg from './package.json';
 
 export default defineConfig({
-  plugins: [LibTypes()],
+  plugins: [LibTypes({ tsconfigPath: './tsconfig.build.json' })],
   build: {
     minify: false,
     target: 'ES2018',

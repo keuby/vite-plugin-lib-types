@@ -17,7 +17,7 @@ export default function VitePluginLibTypes(options: UserOptions = {}): Plugin {
 
       if (!entry) return;
 
-      const tempDir = path.resolve(root, options.tempDir ?? outDir, '.types');
+      const tempDir = path.resolve(root, options.tempDir ?? outDir, '.temp');
       await fs.mkdir(tempDir, { recursive: true });
       try {
         const project = await createProject({
