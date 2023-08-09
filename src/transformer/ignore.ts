@@ -1,17 +1,7 @@
+import type { Comment, Node, TSType } from '@babel/types';
 import type { Transformer } from '../types';
+import { type NodePath, transformAsync } from '@babel/core';
 import MagicString from 'magic-string';
-import { parse } from '@babel/core';
-import { walk } from 'estree-walker';
-import type {
-  Node,
-  VariableDeclaration,
-  VariableDeclarator,
-  TSTypeAliasDeclaration,
-  TSInterfaceDeclaration,
-  TSDeclareFunction,
-  TSEnumDeclaration,
-  ClassDeclaration,
-} from '@babel/types';
 
 export interface IgnoreTransformerOptions {
   ignoreTags?: string[];
@@ -33,158 +23,170 @@ export function createIgnoreTransformer(options: IgnoreTransformerOptions): Tran
     return null;
   };
 
-  return (code) => {
+  return async (code) => {
     if (!needTransform()) return code;
 
     const s = new MagicString(code);
-    const ast = parse(code, {
-      plugins: ['typescript'],
+
+    const removed = new Set<string>();
+
+    const removeWithComma = (start: number, end: number) => {};
+
+    const getRemoveTags = (comments: Comment[]): string[] => {
+      const ignoreTagNames: string[] = [];
+      for (const comment of comments) {
+        const name = getIgnoredTag(comment.value);
+        if (name) ignoreTagNames.push(name);
+      }
+      return ignoreTagNames;
+    };
+
+    const tryRemoveTSType = (annotation: TSType) => {
+      switch (annotation.type) {
+        case 'TSTypeLiteral':
+          annotation.members.forEach(tryRemoveNode);
+          break;
+        case 'TSIntersectionType':
+        case 'TSUnionType':
+          annotation.types.forEach(tryRemoveNode);
+          break;
+        case 'TSArrayType':
+          tryRemoveTSType(annotation.elementType);
+          break;
+        case 'TSParenthesizedType':
+          tryRemoveTSType(annotation.typeAnnotation);
+          break;
+        case 'TSTypeReference':
+          if (annotation.typeParameters) {
+            annotation.typeParameters.params.forEach(tryRemoveNode);
+          }
+          break;
+      }
+    };
+
+    const tryRemoveNode = (node: Node) => {
+      const comments = node.leadingComments ?? [];
+      const removeTags = getRemoveTags(comments);
+      if (removeTags.length > 0) {
+        const start = comments[0].start!;
+        const end = node.end!;
+        const id =
+          'id' in node && node.id?.type === 'Identifier'
+            ? node.id.name
+            : 'key' in node && node.key?.type === 'Identifier'
+            ? node.key.name
+            : '';
+        id
+          ? s.overwrite(start, end, `/* removed internal: ${id} */`)
+          : s.remove(start, end);
+        return true;
+      } else {
+        switch (node.type) {
+          case 'ClassDeclaration':
+          case 'TSInterfaceDeclaration':
+            node.body.body.forEach(tryRemoveNode);
+            break;
+          case 'TSEnumDeclaration':
+          case 'TSTypeLiteral':
+            node.members.forEach(tryRemoveNode);
+            break;
+          case 'ExportNamedDeclaration':
+            if (node.declaration != null) {
+              tryRemoveNode(node.declaration);
+            }
+            break;
+          case 'TSTypeAliasDeclaration':
+            tryRemoveTSType(node.typeAnnotation);
+            if (node.typeParameters) {
+              node.typeParameters.params.forEach((param) => {
+                param.constraint && tryRemoveTSType(param.constraint);
+              });
+            }
+            break;
+          case 'TSTypeReference':
+            if (node.typeParameters) {
+              node.typeParameters.params.forEach(tryRemoveTSType);
+            }
+            break;
+          case 'TSPropertySignature': {
+            const annotation = node.typeAnnotation?.typeAnnotation;
+            if (annotation) tryRemoveTSType(annotation);
+            break;
+          }
+        }
+        return false;
+      }
+    };
+
+    const tryRemove = (path: NodePath) => {
+      if (tryRemoveNode(path.node) && path.parent.type === 'Program') {
+        switch (path.node.type) {
+          case 'VariableDeclaration':
+            path.node.declarations.forEach((item) => {
+              if (item.id.type === 'Identifier') {
+                removed.add(item.id.name);
+              }
+            });
+            break;
+          case 'ClassDeclaration':
+          case 'TSInterfaceDeclaration':
+          case 'TSEnumDeclaration':
+          case 'TSTypeAliasDeclaration':
+            removed.add(path.node.id.name);
+            break;
+        }
+      }
+    };
+
+    await transformAsync(code, {
+      filename: 'types.d.ts',
+      presets: ['@babel/preset-typescript'],
+
+      plugins: [
+        {
+          visitor: {
+            ClassDeclaration: (path) => {
+              if (tryRemoveNode(path.node) && path.parent.type === 'Program') {
+                removed.add(path.node.id.name);
+              }
+            },
+            TSInterfaceDeclaration: (path) => {
+              if (tryRemoveNode(path.node) && path.parent.type === 'Program') {
+                removed.add(path.node.id.name);
+              }
+            },
+            ExportNamedDeclaration: (path) => {
+              if (path.node.declaration) {
+                tryRemove(path);
+              } else if (path.node.specifiers.length > 0) {
+                path.node.specifiers.forEach((specifier) => {
+                  if (specifier.type === 'ExportSpecifier') {
+                    if (removed.has(specifier.local.name)) {
+                      const start = specifier.start!;
+                      let end = specifier.end!,
+                        char: string;
+                      while ((char = s.original[end + 1]) && char.match(/\s/)) end++;
+                      end += char === ',' ? 0 : -1;
+                      s.remove(start, end);
+                    }
+                  }
+                });
+              }
+            },
+            ExportDefaultDeclaration: tryRemove,
+            TSTypeAliasDeclaration: tryRemove,
+          },
+        },
+      ],
       sourceType: 'module',
     });
 
-    function processDeclaration(
-      node:
-        | VariableDeclarator
-        | TSTypeAliasDeclaration
-        | TSInterfaceDeclaration
-        | TSDeclareFunction
-        | TSInterfaceDeclaration
-        | TSEnumDeclaration
-        | ClassDeclaration,
-      parentDecl?: VariableDeclaration,
-    ) {
-      if (!node.id) {
-        return;
-      }
-      // @ts-ignore
-      const name = node.id.name;
-      if (name.startsWith('_')) {
-        return;
-      }
-      shouldRemoveExport.add(name);
-      if (!removeIgnoredTag(parentDecl || node)) {
-        if (isExported.has(name)) {
-          // @ts-ignore
-          s.prependLeft((parentDecl || node).start, `export `);
-        }
-        if (node.type === 'TSInterfaceDeclaration' || node.type === 'ClassDeclaration') {
-          node.body.body.forEach(removeIgnoredTag);
-        } else if (node.type === 'TSTypeAliasDeclaration') {
-          // @ts-ignore
-          walk(node.typeAnnotation, {
-            enter(node) {
-              // @ts-ignore
-              if (removeIgnoredTag(node)) this.skip();
-            },
-          });
-        }
-      }
-    }
-
-    function removeIgnoredTag(node: Node) {
-      let ignoredTag: string | null;
-      if (
-        node.leadingComments &&
-        node.leadingComments.some((c) => {
-          return c.type === 'CommentBlock' && (ignoredTag = getIgnoredTag(c.value));
-        })
-      ) {
-        const n: any = node;
-        let id;
-        if (n.id && n.id.type === 'Identifier') {
-          id = n.id.name;
-        } else if (n.key && n.key.type === 'Identifier') {
-          id = n.key.name;
-        }
-        if (id) {
-          s.overwrite(
-            node.leadingComments[0].start!,
-            node.end!,
-            `/* removed ${ignoredTag!}: ${id} */`,
-          );
-        } else {
-          s.remove(node.leadingComments[0].start!, node.end!);
-        }
-        return true;
-      }
-      return false;
-    }
-
-    const isExported = new Set();
-    const shouldRemoveExport = new Set();
-
-    const programBody = ast?.program?.body ?? [];
-    // pass 0: check all exported types
-    for (const node of programBody) {
-      if (node.type === 'ExportNamedDeclaration' && !node.source) {
-        for (let i = 0; i < node.specifiers.length; i++) {
-          const spec = node.specifiers[i];
-          if (spec.type === 'ExportSpecifier') {
-            isExported.add(spec.local.name);
-          }
-        }
-      }
-    }
-
-    // pass 1: remove internals + add exports
-    for (const node of programBody) {
-      if (node.type === 'VariableDeclaration') {
-        processDeclaration(node.declarations[0], node);
-        if (node.declarations.length > 1) {
-          throw new Error(
-            `unhandled declare const with more than one declarators:\n${code.slice(
-              node.start!,
-              node.end!,
-            )}`,
-          );
-        }
-      } else if (
-        node.type === 'TSTypeAliasDeclaration' ||
-        node.type === 'TSInterfaceDeclaration' ||
-        node.type === 'TSDeclareFunction' ||
-        node.type === 'TSEnumDeclaration' ||
-        node.type === 'ClassDeclaration'
-      ) {
-        processDeclaration(node);
-      } else {
-        removeIgnoredTag(node);
-      }
-    }
-
-    // pass 2: remove exports
-    for (const node of programBody) {
-      if (node.type === 'ExportNamedDeclaration' && !node.source) {
-        let removed = 0;
-        for (let i = 0; i < node.specifiers.length; i++) {
-          const spec = node.specifiers[i];
-          if (
-            spec.type === 'ExportSpecifier' &&
-            shouldRemoveExport.has(spec.local.name)
-          ) {
-            // @ts-ignore
-            const exported = spec.exported.name;
-            if (exported !== spec.local.name) {
-              continue;
-            }
-            const next = node.specifiers[i + 1];
-            if (next) {
-              s.remove(spec.start!, next.start!);
-            } else {
-              const prev = node.specifiers[i - 1];
-              s.remove(prev ? prev.end! : spec.start!, spec.end!);
-            }
-            removed++;
-          }
-        }
-        if (removed === node.specifiers.length) {
-          s.remove(node.start!, node.end!);
-        }
-      }
-    }
     code = s.toString();
 
     if (!ignoreCheck) {
-      const unhandledTags: string[] = ignoreTags?.filter((tag) => code.includes(tag));
+      const unhandledTags: string[] = normalizedIgnoreTags
+        .filter((tag) => tag.regex.test(code))
+        .map((tag) => tag.name);
       if (unhandledTags.length > 0) {
         throw new Error(`unhandled ${unhandledTags.join(',')} declarations detected`);
       }

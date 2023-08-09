@@ -1,3 +1,5 @@
+import type { PreRenderedChunk } from 'rollup';
+import type { Options } from 'rollup-plugin-dts';
 import type { CompilerOptions } from 'typescript';
 
 export type MaybePromise<T> = T | Promise<T>;
@@ -12,19 +14,17 @@ export type Transformer = (
   options: { root: string },
 ) => MaybePromise<string | undefined | null | void>;
 
-export interface UserOptions {
+export interface UserOptions extends Pick<Options, 'respectExternal'> {
   root?: string;
-  enable?: boolean;
   tsconfig?: {
     compilerOptions?: CompilerOptions;
     include?: string[];
     exclude?: string[];
   };
+  tsconfigPath?: string;
   outDir?: string;
   tempDir?: string;
-  tsconfigPath?: string;
-  apiExtractorConfigPath?: string;
-  fileName?: string | ((entryName: string) => string);
+  fileName?: string | ((chunk: PreRenderedChunk) => string);
   parsers?: Parser[];
   transformers?: Transformer[];
 }

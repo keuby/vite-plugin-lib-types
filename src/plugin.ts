@@ -12,23 +12,12 @@ export default function VitePluginLibTypes(options: UserOptions = {}): Plugin {
     apply: 'build',
     async configResolved(config) {
       const root = config.root;
+      const outDir = config.build.outDir ?? 'dist';
       const entry = config.build.lib && config.build.lib.entry;
-      if (!entry || options.enable === false) return;
 
-      const transform = !options.transformers
-        ? (code: string) => code
-        : async (code: string) => {
-            for (const fn of options.transformers!) {
-              const parsedCode = await fn(code, { root });
-              if (typeof parsedCode === 'string') {
-                code = parsedCode;
-              }
-            }
-            return code;
-          };
+      if (!entry) return;
 
-      const outDir = path.resolve(root, config.build.outDir);
-      const tempDir = path.resolve(root, options.tempDir ?? outDir, '.types');
+      const tempDir = path.resolve(root, options.tempDir ?? outDir, '.temp');
       await fs.mkdir(tempDir, { recursive: true });
       try {
         const project = await createProject({
@@ -36,21 +25,22 @@ export default function VitePluginLibTypes(options: UserOptions = {}): Plugin {
           tempDir,
         });
         await project.emit({ emitOnlyDtsFiles: true });
-        const buildResult = await buildTypes({
+
+        const outputOptions = config.build.rollupOptions.output;
+        const chunks = await buildTypes({
           ...options,
           entry,
           tempDir,
+          exports: Array.isArray(outputOptions) ? undefined : outputOptions?.exports,
         });
-        const ps = Object.values(buildResult).map(async ({ fileName, filePath }) => {
-          const source = await fs.readFile(filePath, 'utf-8');
+        for (const chunk of chunks) {
           emitFiles.push({
             type: 'asset',
-            name: path.basename(filePath),
-            fileName: fileName,
-            source: await transform(source)!,
+            name: chunk.name,
+            source: chunk.type === 'chunk' ? chunk.code : chunk.source,
+            fileName: chunk.fileName,
           });
-        });
-        await Promise.all(ps);
+        }
       } finally {
         await fs.rm(tempDir, { recursive: true });
       }
