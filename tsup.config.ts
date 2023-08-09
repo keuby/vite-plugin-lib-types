@@ -11,5 +11,4 @@ export default defineConfig({
   dts: true,
   clean: true,
   splitting: true,
-  external: ['@vue/compiler-sfc'],
 });
