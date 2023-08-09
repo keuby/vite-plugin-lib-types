@@ -21,16 +21,16 @@ async function main() {
     const project = await createProject(options);
     await project.emit({ emitOnlyDtsFiles: true });
     const buildResult = await buildTypes(options);
-    await Promise.all(
-      Object.values(buildResult).map(async ({ fileName, filePath }) => {
-        const distPath = path.resolve(outDir, fileName);
-        const distDir = path.dirname(distPath);
-        if (!fs.existsSync(distDir)) {
-          await fs.mkdir(distDir, { recursive: true });
-        }
-        return fs.copyFile(filePath, distPath);
-      }),
-    );
+    // await Promise.all(
+    //   Object.values(buildResult).map(async ({ fileName, filePath }) => {
+    //     const distPath = path.resolve(outDir, fileName);
+    //     const distDir = path.dirname(distPath);
+    //     if (!fs.existsSync(distDir)) {
+    //       await fs.mkdir(distDir, { recursive: true });
+    //     }
+    //     return fs.copyFile(filePath, distPath);
+    //   }),
+    // );
   } finally {
     await fs.rm(tempDir, { recursive: true });
   }

@@ -38,6 +38,7 @@ export function createIgnoreTransformer(options: IgnoreTransformerOptions): Tran
 
     const s = new MagicString(code);
     const ast = parse(code, {
+      filename: 'types.d.ts',
       plugins: ['typescript'],
       sourceType: 'module',
     });
@@ -53,19 +54,12 @@ export function createIgnoreTransformer(options: IgnoreTransformerOptions): Tran
         | ClassDeclaration,
       parentDecl?: VariableDeclaration,
     ) {
-      if (!node.id) {
-        return;
-      }
+      if (!node.id) return;
       // @ts-ignore
       const name = node.id.name;
-      if (name.startsWith('_')) {
-        return;
-      }
-      shouldRemoveExport.add(name);
       if (!removeIgnoredTag(parentDecl || node)) {
         if (isExported.has(name)) {
-          // @ts-ignore
-          s.prependLeft((parentDecl || node).start, `export `);
+          s.prependLeft((parentDecl || node).start!, `export `);
         }
         if (node.type === 'TSInterfaceDeclaration' || node.type === 'ClassDeclaration') {
           node.body.body.forEach(removeIgnoredTag);

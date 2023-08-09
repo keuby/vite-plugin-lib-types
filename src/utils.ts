@@ -54,3 +54,41 @@ export function getPkgJson(root: string): PackageData['data'] {
 export function getPkgName(name: string) {
   return name?.startsWith('@') ? name.split('/')[1] : name;
 }
+
+export function normalizeEntry(
+  entry: string | string[] | { [entryAlias: string]: string },
+  root: string,
+  typesRoot: string,
+): { [entryAlias: string]: string } {
+  const normalizedEntry: { [entryAlias: string]: string } = {};
+  if (isPlainObject(entry)) {
+    for (const key in entry) {
+      normalizedEntry[key] = path.resolve(root, entry[key]);
+    }
+  } else {
+    const nameCountRecord: Record<string, number> = {};
+    const entryFiles = Array.isArray(entry) ? entry : [entry];
+    for (const entryFile of entryFiles) {
+      const ext = path.extname(entryFile);
+      const entryName = path.basename(entryFile).replace(ext, '');
+      const count =
+        nameCountRecord[entryName] == null
+          ? (nameCountRecord[entryName] = 1)
+          : ++nameCountRecord[entryName];
+      const key = count === 1 ? entryName : entryName + count;
+      normalizedEntry[key] = path.resolve(root, entryFile);
+    }
+  }
+
+  for (const key in normalizedEntry) {
+    const entryFile = normalizedEntry[key];
+    const isScriptFile = !!entryFile.match(/\.([tj]sx?)$/);
+    const relEntryFileDir = path.dirname(path.relative(root, entryFile));
+    const relFilePath = path.join(
+      relEntryFileDir,
+      path.basename(entryFile, isScriptFile ? path.extname(entryFile) : '') + '.d.ts',
+    );
+    normalizedEntry[key] = path.join(typesRoot, relFilePath);
+  }
+  return normalizedEntry;
+}
