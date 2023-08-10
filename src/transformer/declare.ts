@@ -5,6 +5,7 @@ import type { Transformer } from '../types';
 export interface DeclareTransformerOptions {
   files?: string[];
   imports?: string[];
+  addEmptyExport?: boolean;
 }
 
 export function createDeclareTransformer(
@@ -12,6 +13,7 @@ export function createDeclareTransformer(
 ): Transformer {
   const fileList: string[] = [];
   const importList: string[] = [];
+  let addEmptyExport = false;
   if (Array.isArray(options)) {
     fileList.push(...options);
   } else if (typeof options === 'string') {
@@ -20,9 +22,11 @@ export function createDeclareTransformer(
     const { files = [], imports = [] } = options;
     fileList.push(...files);
     importList.push(...imports);
+    addEmptyExport = options.addEmptyExport ?? false;
   }
 
-  return async (dtsCode, { root }) => {
+  return async (dtsCode, ...restArgs) => {
+    const root = restArgs[2].root;
     const declareList = (
       await Promise.all(
         fileList.map(async (file) => {
@@ -43,6 +47,9 @@ export function createDeclareTransformer(
     }
     if (declareList.length > 0) {
       dtsCode = dtsCode + '\n' + declareList.join('\n');
+    }
+    if (addEmptyExport) {
+      dtsCode = dtsCode = '\n' + 'export {}\n';
     }
     return dtsCode;
   };

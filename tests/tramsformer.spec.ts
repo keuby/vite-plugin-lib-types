@@ -1,20 +1,20 @@
 import { describe, test, expect } from 'vitest';
-import {} from 'typescript';
-import { createIgnoreTransformer } from '../src/transformer';
+import path from 'pathe';
+import { createRemoveTransformer } from '../src/transformer';
 
-describe('ignore transformer', () => {
+describe('remove transformer: annotationTags', () => {
   const root = process.cwd();
   const ignoreTag = 'internal';
 
   async function transform(code: string) {
-    const fn = createIgnoreTransformer({
-      ignoreTags: [ignoreTag],
-      ignoreCheck: true,
+    const fn = createRemoveTransformer({
+      annotationTags: [ignoreTag],
     });
-    return await fn(code, { root });
+    // @ts-ignore
+    return await fn(code, { fileName: path.join(root, 'types.d.ts') });
   }
 
-  test('class ignore', async () => {
+  test('class remove', async () => {
     const code = `
     /**
      * @${ignoreTag}
@@ -24,7 +24,7 @@ describe('ignore transformer', () => {
     expect(await transform(code)).not.toContain(`@${ignoreTag}`);
   });
 
-  test('class property ignore', async () => {
+  test('class property remove', async () => {
     const code = `
     class A {
       /**
@@ -36,7 +36,7 @@ describe('ignore transformer', () => {
     expect(await transform(code)).not.toContain(`@${ignoreTag}`);
   });
 
-  test('class method ignore', async () => {
+  test('class method remove', async () => {
     const code = `
     class A {
       /**
@@ -48,7 +48,7 @@ describe('ignore transformer', () => {
     expect(await transform(code)).not.toContain(`@${ignoreTag}`);
   });
 
-  test('interface ignore', async () => {
+  test('interface remove', async () => {
     const code = `
     /**
      * @${ignoreTag}
@@ -58,7 +58,7 @@ describe('ignore transformer', () => {
     expect(await transform(code)).not.toContain(`@${ignoreTag}`);
   });
 
-  test('interface ignore', async () => {
+  test('interface remove', async () => {
     const code = `
     /**
      * @${ignoreTag}
@@ -68,7 +68,7 @@ describe('ignore transformer', () => {
     expect(await transform(code)).not.toContain(`@${ignoreTag}`);
   });
 
-  test('interface method', async () => {
+  test('interface method remove', async () => {
     const code = `
     interface A {
       /**
@@ -80,7 +80,7 @@ describe('ignore transformer', () => {
     expect(await transform(code)).not.toContain(`@${ignoreTag}`);
   });
 
-  test('interface property', async () => {
+  test('interface property remove', async () => {
     const code = `
     interface A {
       /**
@@ -92,7 +92,7 @@ describe('ignore transformer', () => {
     expect(await transform(code)).not.toContain(`@${ignoreTag}`);
   });
 
-  test('type literal', async () => {
+  test('type literal remove', async () => {
     const code = `
     type A = B & {
       /**
@@ -108,5 +108,80 @@ describe('ignore transformer', () => {
     }>
     `;
     expect(await transform(code)).not.toContain(`@${ignoreTag}`);
+  });
+
+  test('enum define remove', async () => {
+    const code = `
+    /**
+     * @${ignoreTag}
+     */
+    enum Test1 {}
+
+    enum Test2 {
+      /* @${ignoreTag} */
+      a = 5,
+      b = 6,
+    }
+
+    export { Test1, Test2 }
+    `;
+    const result = await transform(code);
+    expect(result).not.toContain(`@${ignoreTag}`);
+    expect(result).not.toContain('export { Test1');
+  });
+
+  test('var define remove', async () => {
+    const code = `
+    /**
+     * @${ignoreTag}
+     */
+    const a = 5;
+
+    let b: string;
+
+    declare const c: {
+      /**
+       * @${ignoreTag}
+       */
+      d: string;
+      f: number;
+      e: {
+        /**
+         * @${ignoreTag}
+         */
+        g: boolean;
+        h: number[];
+      }
+    }
+
+    export { a, b, c }
+    `;
+    const result = await transform(code);
+    expect(result).not.toContain(`@${ignoreTag}`);
+    expect(result).not.toContain('export { a');
+  });
+});
+
+describe('remove transformer: removeEmptyImport', () => {
+  const root = process.cwd();
+
+  async function transform(code: string) {
+    const fn = createRemoveTransformer({
+      removeEmptyImport: true,
+    });
+    // @ts-ignore
+    return await fn(code, { fileName: path.join(root, 'types.d.ts') });
+  }
+
+  test('empty import', async () => {
+    const code = `
+    import {} from 'a';
+    import { B } from 'b';
+    import 'c';
+    `;
+    const result = await transform(code);
+    expect(result).not.toContain(`'a'`);
+    expect(result).not.toContain(`'c'`);
+    expect(result).toContain(`'b'`);
   });
 });
