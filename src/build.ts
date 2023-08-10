@@ -3,7 +3,13 @@ import { Project } from 'ts-morph';
 import glob from 'fast-glob';
 import fs from 'fs-extra';
 import { resolve, readFile } from 'tsconfig';
-import { rollup, type Plugin, type OutputOptions } from 'rollup';
+import {
+  rollup,
+  type Plugin,
+  type OutputOptions,
+  type InputOption,
+  type InputOptions,
+} from 'rollup';
 import { dts } from 'rollup-plugin-dts';
 import { formatTsConfigPattern, getPkgJson, getPkgName, normalizeEntry } from './utils';
 import type { UserOptions } from './types';
@@ -94,6 +100,7 @@ export async function createProject(options: UserOptions) {
 
 export interface BuildTypesOptions extends UserOptions {
   entry: string | string[] | { [entryAlias: string]: string };
+  external?: InputOptions['external'];
   exports?: OutputOptions['exports'];
 }
 
@@ -146,6 +153,7 @@ export async function buildTypes(options: BuildTypesOptions) {
       }),
       patchTypes(),
     ],
+    external: options.external,
   });
 
   let fileName = options.fileName;
