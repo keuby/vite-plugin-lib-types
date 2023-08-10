@@ -4,7 +4,7 @@ import glob from 'fast-glob';
 import fs from 'fs-extra';
 import { resolve, readFile } from 'tsconfig';
 import { rollup, type Plugin, type OutputOptions } from 'rollup';
-import dts from 'rollup-plugin-dts';
+import { dts } from 'rollup-plugin-dts';
 import { formatTsConfigPattern, getPkgJson, getPkgName, normalizeEntry } from './utils';
 import type { UserOptions } from './types';
 import { createVueParser } from './parser';
