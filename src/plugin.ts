@@ -31,6 +31,7 @@ export default function VitePluginLibTypes(options: UserOptions = {}): Plugin {
           ...options,
           entry,
           tempDir,
+          external: config.build.rollupOptions.external,
           exports: Array.isArray(outputOptions) ? undefined : outputOptions?.exports,
         });
         for (const chunk of chunks) {
