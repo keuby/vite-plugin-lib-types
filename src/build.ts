@@ -3,7 +3,7 @@ import { Project } from 'ts-morph';
 import glob from 'fast-glob';
 import fs from 'fs-extra';
 import { resolve, readFile } from 'tsconfig';
-import { rollup, type Plugin, type OutputChunk, type OutputOptions } from 'rollup';
+import { rollup, type Plugin, type OutputOptions } from 'rollup';
 import dts from 'rollup-plugin-dts';
 import { formatTsConfigPattern, getPkgJson, getPkgName, normalizeEntry } from './utils';
 import type { UserOptions } from './types';
@@ -57,7 +57,7 @@ export async function createProject(options: UserOptions) {
 
   const parseFile = async (filePath: string, code: string) => {
     for (const parser of parsers) {
-      const parseResult = await parser(filePath, code, { root });
+      const parseResult = await parser.apply(project, [code, { root, filePath }]);
       if (parseResult != null) {
         return parseResult;
       }
@@ -117,10 +117,15 @@ export async function buildTypes(options: BuildTypesOptions) {
   const patchTypes = (): Plugin => {
     return {
       name: 'patch-types',
-      async renderChunk(code) {
+      async renderChunk(code, chunk, opts, meta) {
         if (options.transformers) {
           for (const fn of options.transformers!) {
-            const parsedCode = await fn(code, { root });
+            const parsedCode = await fn.apply(this, [
+              code,
+              chunk,
+              opts,
+              { root, ...meta },
+            ]);
             if (typeof parsedCode === 'string') {
               code = parsedCode;
             }
