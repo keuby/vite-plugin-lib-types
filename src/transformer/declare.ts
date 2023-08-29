@@ -32,7 +32,7 @@ export function createDeclareTransformer(
         fileList.map(async (file) => {
           const filePath = path.resolve(root, file);
           const code = await fs.readFile(filePath, 'utf-8');
-          const regex = /declare\s+module\s+(['"])(.*?)\1\s*{([\s\S]*?})\s*}/g;
+          const regex = /declare\s+(?:module\s+(['"])(.*?)\1|global)\s*{([\s\S]*?})\s*}/g;
           let matches: RegExpExecArray | null = null;
           const declareList: string[] = [];
           while ((matches = regex.exec(code)) !== null) {

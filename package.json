@@ -35,8 +35,7 @@
   "files": [
     "dist",
     "parser.d.ts",
-    "transformer.d.ts",
-    "api-extractor.json"
+    "transformer.d.ts"
   ],
   "dependencies": {
     "@babel/core": "^7.22.11",
@@ -73,9 +72,6 @@
   },
   "peerDependenciesMeta": {
     "vue": {
-      "optional": true
-    },
-    "vite": {
       "optional": true
     }
   },
