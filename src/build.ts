@@ -9,9 +9,8 @@ import { formatTsConfigPattern, getPkgJson, getPkgName, normalizeEntry } from '.
 import type { UserOptions } from './types';
 import { createVueParser } from './parser';
 
-export async function createProject(options: UserOptions) {
+export async function createProject(root: string, options: UserOptions) {
   const {
-    root = process.cwd(),
     parsers = [createVueParser()],
     outDir = 'dist',
     tempDir = path.join(outDir, '.temp'),
@@ -98,9 +97,8 @@ export interface BuildTypesOptions extends UserOptions {
   exports?: OutputOptions['exports'];
 }
 
-export async function buildTypes(options: BuildTypesOptions) {
+export async function buildTypes(root: string, options: BuildTypesOptions) {
   const {
-    root = process.cwd(),
     entry,
     tempDir = 'node_modules/.temp',
     tsconfig = {},
