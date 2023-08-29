@@ -3,22 +3,24 @@ import { Project } from 'ts-morph';
 import glob from 'fast-glob';
 import fs from 'fs-extra';
 import { resolve, readFile } from 'tsconfig';
-import { Extractor, ExtractorConfig } from '@microsoft/api-extractor';
 import {
-  formatTsConfigPattern,
-  getPkgJson,
-  getPkgName,
-  isPlainObject,
-  isString,
-} from './utils';
-import { name as packageName } from '../package.json';
+  rollup,
+  type Plugin,
+  type OutputOptions,
+  type InputOption,
+  type InputOptions,
+} from 'rollup';
+import { dts } from 'rollup-plugin-dts';
+import { formatTsConfigPattern, getPkgJson, getPkgName, normalizeEntry } from './utils';
 import type { UserOptions } from './types';
+import { createVueParser } from './parser';
 
 export async function createProject(options: UserOptions) {
   const {
     root = process.cwd(),
-    parsers = [],
-    tempDir = '.temp',
+    parsers = [createVueParser()],
+    outDir = 'dist',
+    tempDir = path.join(outDir, '.temp'),
     tsconfig: {
       compilerOptions = {},
       include: inputInclude = [],
@@ -61,7 +63,7 @@ export async function createProject(options: UserOptions) {
 
   const parseFile = async (filePath: string, code: string) => {
     for (const parser of parsers) {
-      const parseResult = await parser(filePath, code, { root });
+      const parseResult = await parser.apply(project, [code, { root, filePath }]);
       if (parseResult != null) {
         return parseResult;
       }
@@ -98,15 +100,18 @@ export async function createProject(options: UserOptions) {
 
 export interface BuildTypesOptions extends UserOptions {
   entry: string | string[] | { [entryAlias: string]: string };
+  external?: InputOptions['external'];
+  exports?: OutputOptions['exports'];
 }
 
 export async function buildTypes(options: BuildTypesOptions) {
   const {
     root = process.cwd(),
     entry,
-    tempDir = '.temp',
+    tempDir = 'node_modules/.temp',
+    tsconfig = {},
+    respectExternal,
     tsconfigPath = await resolve(root),
-    apiExtractorConfigPath = 'api-extractor.json',
   } = options;
 
   if (!tsconfigPath) {
@@ -114,74 +119,53 @@ export async function buildTypes(options: BuildTypesOptions) {
   }
 
   const typesTempDir = path.resolve(root, tempDir);
-  const typesDistDir = path.resolve(root, 'node_modules/.temp');
+  const normalizedEntries = normalizeEntry(entry, root, typesTempDir);
 
-  let normalizedEntries: { [name: string]: string };
+  const patchTypes = (): Plugin => {
+    return {
+      name: 'patch-types',
+      async renderChunk(code, chunk, opts, meta) {
+        if (options.transformers) {
+          for (const fn of options.transformers!) {
+            const parsedCode = await fn.apply(this, [
+              code,
+              chunk,
+              opts,
+              { root, ...meta },
+            ]);
+            if (typeof parsedCode === 'string') {
+              code = parsedCode;
+            }
+          }
+        }
+        return code;
+      },
+    };
+  };
 
-  if (isPlainObject(entry)) {
-    normalizedEntries = entry as { [name: string]: string };
-  } else {
-    const entryFiles = Array.isArray(entry) ? entry : [entry];
-    normalizedEntries = Object.fromEntries(
-      entryFiles.map((entryFile) => {
-        const ext = path.extname(entryFile);
-        const entryName = path.basename(entryFile).replace(ext, '');
-        return [entryName, entryFile];
+  const bundle = await rollup({
+    input: normalizedEntries,
+    plugins: [
+      dts({
+        respectExternal,
+        tsconfig: tsconfigPath,
+        compilerOptions: tsconfig.compilerOptions,
       }),
-    );
-  }
-
-  const localJsonPath = path.resolve(root, apiExtractorConfigPath);
-  const jsonPath = fs.existsSync(localJsonPath)
-    ? localJsonPath
-    : require.resolve(`${packageName}/api-extractor.json`);
+      patchTypes(),
+    ],
+    external: options.external,
+  });
 
   let fileName = options.fileName;
 
-  if (!fileName) {
-    fileName =
-      Object.keys(normalizedEntries).length === 1
-        ? getPkgName(getPkgJson(root).name) + '.d.ts'
-        : (v: string) => v + '.d.ts';
+  if (!fileName && Object.keys(normalizedEntries).length === 1) {
+    fileName = getPkgName(getPkgJson(root).name) + '.d.ts';
   }
 
-  const promises = Object.entries(normalizedEntries).map(
-    async ([entryName, entryFile]) => {
-      const entryFileName = path.basename(entryFile);
-      const isTsFile = !!entryFile.match(/\.(ts|tsx)$/);
-      const relEntryFileDir = path.dirname(path.relative(root, entryFile));
-      const dtsPath = path.join(
-        relEntryFileDir,
-        isTsFile
-          ? entryFileName.replace(path.extname(entryFile), '.d.ts')
-          : entryFileName + '.d.ts',
-      );
+  const result = await bundle.generate({
+    entryFileNames: fileName,
+    exports: options.exports,
+  });
 
-      const distFilePath = path.resolve(
-        typesDistDir,
-        isString(fileName) ? fileName : fileName!(entryName),
-      );
-      const configObject = ExtractorConfig.loadFile(jsonPath);
-      configObject.projectFolder = root;
-      configObject.dtsRollup!.untrimmedFilePath = distFilePath;
-      configObject.mainEntryPointFilePath = path.resolve(typesTempDir, dtsPath);
-      const extractorConfig = ExtractorConfig.prepare({
-        configObject: configObject,
-        configObjectFullPath: jsonPath,
-        packageJsonFullPath: path.resolve(root, 'package.json'),
-      });
-      const { errorCount } = Extractor.invoke(extractorConfig);
-      if (errorCount > 0) {
-        throw new Error(`API extractor found ${errorCount} errors`);
-      }
-      return [
-        entryName,
-        {
-          fileName: path.relative(typesDistDir, distFilePath),
-          filePath: distFilePath,
-        },
-      ] as const;
-    },
-  );
-  return Object.fromEntries(await Promise.all(promises));
+  return result.output;
 }

@@ -1,2 +1,2 @@
 export * from './declare';
-export * from './ignore';
+export * from './remove';

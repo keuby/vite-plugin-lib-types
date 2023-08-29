@@ -1,6 +1,6 @@
 import path from 'pathe';
 import type { Parser } from '../types';
-import type { SFCScriptCompileOptions, SFCParseOptions } from '@vue/compiler-sfc';
+import type { SFCScriptCompileOptions, SFCParseOptions } from 'vue/compiler-sfc';
 
 const defaultComponentCode = `
 import { defineComponent } from 'vue';
@@ -12,11 +12,11 @@ export interface VueParserOptions {
   scriptCompileOptions?: SFCScriptCompileOptions;
 }
 
-export function createVueParser(options: VueParserOptions): Parser {
-  const { parse, compileScript } = require('@vue/compiler-sfc');
-  return (filePath, rawCode) => {
+export function createVueParser(options: VueParserOptions = {}): Parser {
+  return function (rawCode, { filePath }) {
     if (!filePath.endsWith('.vue')) return;
 
+    const { parse, compileScript } = require('vue/compiler-sfc');
     const sfc = parse(rawCode, options.parseOptions);
     const { script, scriptSetup } = sfc.descriptor;
     let suffix = '.ts';
