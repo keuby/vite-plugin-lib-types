@@ -1,5 +1,7 @@
 # vite-plugin-lib-types
 
+A vite plugin that can automatically generate dts files
+
 ## Usage
 
 ```bash
