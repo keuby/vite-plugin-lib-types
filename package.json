@@ -35,7 +35,8 @@
   "files": [
     "dist",
     "parser.d.ts",
-    "transformer.d.ts"
+    "transformer.d.ts",
+    "README.md"
   ],
   "dependencies": {
     "@babel/core": "^7.22.11",
