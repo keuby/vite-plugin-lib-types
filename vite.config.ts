@@ -10,7 +10,6 @@ export default defineConfig({
     emptyOutDir: true,
     lib: {
       entry: {
-        cli: './src/cli.ts',
         index: './src/index.ts',
         parser: './src/parser/index.ts',
         transformer: './src/transformer/index.ts',

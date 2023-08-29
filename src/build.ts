@@ -3,14 +3,8 @@ import { Project } from 'ts-morph';
 import glob from 'fast-glob';
 import fs from 'fs-extra';
 import { resolve, readFile } from 'tsconfig';
-import {
-  rollup,
-  type Plugin,
-  type OutputOptions,
-  type InputOption,
-  type InputOptions,
-} from 'rollup';
-import { dts } from 'rollup-plugin-dts';
+import { rollup, type Plugin, type OutputOptions, type InputOptions } from 'rollup';
+import dts from 'rollup-plugin-dts';
 import { formatTsConfigPattern, getPkgJson, getPkgName, normalizeEntry } from './utils';
 import type { UserOptions } from './types';
 import { createVueParser } from './parser';
