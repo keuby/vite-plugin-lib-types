@@ -20,14 +20,14 @@ export default function VitePluginLibTypes(options: UserOptions = {}): Plugin {
       const tempDir = path.resolve(root, options.tempDir ?? outDir, '.temp');
       await fs.mkdir(tempDir, { recursive: true });
       try {
-        const project = await createProject({
+        const project = await createProject(root, {
           ...options,
           tempDir,
         });
         await project.emit({ emitOnlyDtsFiles: true });
 
         const outputOptions = config.build.rollupOptions.output;
-        const chunks = await buildTypes({
+        const chunks = await buildTypes(root, {
           ...options,
           entry,
           tempDir,
