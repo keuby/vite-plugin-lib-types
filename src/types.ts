@@ -25,7 +25,6 @@ export type Transformer = (
 ) => MaybePromise<string | NullValue>;
 
 export interface UserOptions extends Pick<Options, 'respectExternal'> {
-  root?: string;
   tsconfig?: {
     compilerOptions?: CompilerOptions;
     include?: string[];

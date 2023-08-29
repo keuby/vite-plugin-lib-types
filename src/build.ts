@@ -3,21 +3,14 @@ import { Project } from 'ts-morph';
 import glob from 'fast-glob';
 import fs from 'fs-extra';
 import { resolve, readFile } from 'tsconfig';
-import {
-  rollup,
-  type Plugin,
-  type OutputOptions,
-  type InputOption,
-  type InputOptions,
-} from 'rollup';
+import { rollup, type Plugin, type OutputOptions, type InputOptions } from 'rollup';
 import { dts } from 'rollup-plugin-dts';
 import { formatTsConfigPattern, getPkgJson, getPkgName, normalizeEntry } from './utils';
 import type { UserOptions } from './types';
 import { createVueParser } from './parser';
 
-export async function createProject(options: UserOptions) {
+export async function createProject(root: string, options: UserOptions) {
   const {
-    root = process.cwd(),
     parsers = [createVueParser()],
     outDir = 'dist',
     tempDir = path.join(outDir, '.temp'),
@@ -104,9 +97,8 @@ export interface BuildTypesOptions extends UserOptions {
   exports?: OutputOptions['exports'];
 }
 
-export async function buildTypes(options: BuildTypesOptions) {
+export async function buildTypes(root: string, options: BuildTypesOptions) {
   const {
-    root = process.cwd(),
     entry,
     tempDir = 'node_modules/.temp',
     tsconfig = {},
