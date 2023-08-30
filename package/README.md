@@ -12,7 +12,7 @@ A simple example is shown below:
 
 ```ts
 import { defineConfig } from 'vite';
-import types from 'vite-plugin-lib-types';
+import types from '@knx/vite-plugin-lib-types';
 
 export default defineConfig({
   plugins: [types()],
