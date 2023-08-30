@@ -1,9 +1,9 @@
 import { defineConfig } from 'vite';
-import LibTypes from './src';
+import types from './src';
 import pkg from './package.json';
 
 export default defineConfig({
-  plugins: [LibTypes({ tsconfigPath: './tsconfig.build.json' })],
+  plugins: [types({ tsconfigPath: './tsconfig.build.json' })],
   build: {
     minify: false,
     target: 'ES2018',
