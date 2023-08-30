@@ -1,55 +1,48 @@
+import type { OutputOptions, InputOptions } from 'rollup';
 import path from 'pathe';
 import { Project } from 'ts-morph';
 import glob from 'fast-glob';
 import fs from 'fs-extra';
-import { resolve, readFile } from 'tsconfig';
-import { rollup, type Plugin, type OutputOptions, type InputOptions } from 'rollup';
 import dts from 'rollup-plugin-dts';
-import { formatTsConfigPattern, getPkgJson, getPkgName, normalizeEntry } from './utils';
+import { rollup } from 'rollup';
+import {
+  resolveTsConfig,
+  getPkgJson,
+  getPkgName,
+  normalizeEntry,
+  isPlainObject,
+} from './utils';
 import type { UserOptions } from './types';
 import { createVueParser } from './parser';
+import { patchTypes, ignoreModules } from './rollup-plugins';
 
 export async function createProject(root: string, options: UserOptions) {
   const {
     parsers = [createVueParser()],
     outDir = 'dist',
     tempDir = path.join(outDir, '.temp'),
-    tsconfig: {
-      compilerOptions = {},
-      include: inputInclude = [],
-      exclude: inputExclude = [],
-    } = {},
-    tsconfigPath = await resolve(root),
   } = options;
 
-  if (!tsconfigPath) {
-    throw new Error('tsconfig not found');
-  }
-
   const typesAbsoluteDir = path.resolve(root, tempDir);
-  const tsconfig = await readFile(tsconfigPath);
-  const include: string[] = tsconfig.include ?? ['**/*.{ts,tsx}'];
-  const exclude: string[] = tsconfig.exclude ?? ['node_modules/**', 'dist/**'];
+
+  const tsconfig = await resolveTsConfig(root, options);
 
   const project = new Project({
     compilerOptions: {
-      ...compilerOptions,
+      ...tsconfig.compilerOptions,
       rootDir: root,
       baseUrl: root,
       outDir: typesAbsoluteDir,
       declaration: true,
       preserveSymlinks: true,
     },
-    tsConfigFilePath: tsconfigPath,
+    tsConfigFilePath: tsconfig.path,
     skipAddingFilesFromTsConfig: true,
   });
 
-  const globs = formatTsConfigPattern(root, include).concat(inputInclude);
-  const ignore = formatTsConfigPattern(root, exclude).concat(inputExclude);
-
-  const files = await glob(globs, {
+  const files = await glob(tsconfig.include, {
     cwd: root,
-    ignore: ignore,
+    ignore: tsconfig.exclude,
     absolute: true,
     onlyFiles: true,
   });
@@ -98,59 +91,30 @@ export interface BuildTypesOptions extends UserOptions {
 }
 
 export async function buildTypes(root: string, options: BuildTypesOptions) {
-  const {
-    entry,
-    tempDir = 'node_modules/.temp',
-    tsconfig = {},
-    respectExternal,
-    tsconfigPath = await resolve(root),
-  } = options;
+  const { entry, tempDir = 'node_modules/.temp', respectExternal } = options;
 
-  if (!tsconfigPath) {
-    throw new Error('tsconfig not found');
-  }
+  const tsconfig = await resolveTsConfig(root, options);
 
   const typesTempDir = path.resolve(root, tempDir);
   const normalizedEntries = normalizeEntry(entry, root, typesTempDir);
-
-  const patchTypes = (): Plugin => {
-    return {
-      name: 'patch-types',
-      async renderChunk(code, chunk, opts, meta) {
-        if (options.transformers) {
-          for (const fn of options.transformers!) {
-            const parsedCode = await fn.apply(this, [
-              code,
-              chunk,
-              opts,
-              { root, ...meta },
-            ]);
-            if (typeof parsedCode === 'string') {
-              code = parsedCode;
-            }
-          }
-        }
-        return code;
-      },
-    };
-  };
 
   const bundle = await rollup({
     input: normalizedEntries,
     plugins: [
       dts({
         respectExternal,
-        tsconfig: tsconfigPath,
+        tsconfig: tsconfig.path,
         compilerOptions: tsconfig.compilerOptions,
       }),
-      patchTypes(),
+      patchTypes(root, options),
+      ignoreModules(typesTempDir, tsconfig),
     ],
     external: options.external,
   });
 
   let fileName = options.fileName;
 
-  if (!fileName && Object.keys(normalizedEntries).length === 1) {
+  if (!fileName && !isPlainObject(entry) && Object.keys(normalizedEntries).length === 1) {
     fileName = getPkgName(getPkgJson(root).name) + '.d.ts';
   }
 
