@@ -4,7 +4,7 @@ import { Project } from 'ts-morph';
 import glob from 'fast-glob';
 import fs from 'fs-extra';
 import { rollup } from 'rollup';
-import { dts } from 'rollup-plugin-dts';
+import dts from 'rollup-plugin-dts';
 import {
   resolveTsConfig,
   getPkgJson,
