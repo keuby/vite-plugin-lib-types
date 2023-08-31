@@ -3,8 +3,8 @@ import path from 'pathe';
 import { Project } from 'ts-morph';
 import glob from 'fast-glob';
 import fs from 'fs-extra';
-import dts from 'rollup-plugin-dts';
 import { rollup } from 'rollup';
+import dts from 'rollup-plugin-dts';
 import {
   resolveTsConfig,
   getPkgJson,

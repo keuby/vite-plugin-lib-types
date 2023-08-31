@@ -19,6 +19,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         exports: 'named',
+        interop: 'auto',
       },
       external: [...Object.keys(pkg.dependencies), ...Object.keys(pkg.peerDependencies)],
     },
