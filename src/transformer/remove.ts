@@ -6,16 +6,22 @@ import MagicString from 'magic-string';
 export interface RemoveTransformerOptions {
   annotationTags?: string[];
   removeEmptyImport?: boolean;
+  removeTypeKeyword?: boolean;
 }
 
 export function createRemoveTransformer(options: RemoveTransformerOptions): Transformer {
-  const { annotationTags = [], removeEmptyImport = false } = options;
+  const {
+    annotationTags = [],
+    removeEmptyImport = false,
+    removeTypeKeyword = false,
+  } = options;
   const normalizedAnnotationTags = annotationTags.map((tag) => ({
     name: tag,
     regex: new RegExp(`@${tag}\\b`),
   }));
 
-  const needTransform = () => annotationTags.length > 0 || removeEmptyImport;
+  const needTransform = () =>
+    annotationTags.length > 0 || removeEmptyImport || removeTypeKeyword;
   const getIgnoredTag = (value: string): string | null => {
     for (const { name, regex } of normalizedAnnotationTags) {
       if (regex.test(value)) return name;
@@ -23,7 +29,7 @@ export function createRemoveTransformer(options: RemoveTransformerOptions): Tran
     return null;
   };
 
-  return async (code, chunk) => {
+  return async (code) => {
     if (!needTransform()) return code;
 
     const s = new MagicString(code);
@@ -214,6 +220,19 @@ export function createRemoveTransformer(options: RemoveTransformerOptions): Tran
       ],
       sourceType: 'module',
     });
+
+    if (removeTypeKeyword) {
+      s.replaceAll(/export type/g, 'export')
+        .replaceAll(
+          /export\s*{([^}]+)}/g,
+          (_, $1) => `export {${$1.replace(/type\s+/g, '')}}`,
+        )
+        .replaceAll(/import type/g, 'import')
+        .replaceAll(
+          /import\s*{([^}]+)}/g,
+          (_, $1) => `export {${$1.replace(/type\s+/g, '')}}`,
+        );
+    }
 
     return s.hasChanged() ? s.toString() : code;
   };
