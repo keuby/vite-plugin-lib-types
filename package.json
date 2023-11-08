@@ -45,7 +45,6 @@
   "dependencies": {
     "@babel/core": "^7.23.2",
     "@rollup/pluginutils": "^5.0.5",
-    "cross-spawn": "^7.0.3",
     "fs-extra": "^11.1.1",
     "magic-string": "^0.30.5",
     "pathe": "^1.1.1",
@@ -56,7 +55,6 @@
   },
   "devDependencies": {
     "@types/babel__core": "^7.20.4",
-    "@types/cross-spawn": "^6.0.5",
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^20.9.0",
     "@typescript-eslint/eslint-plugin": "^6.10.0",
