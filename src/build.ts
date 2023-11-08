@@ -1,4 +1,4 @@
-import { sync } from 'cross-spawn';
+import { spawn } from 'child_process';
 import path from 'pathe';
 import type { InputOptions, OutputOptions } from 'rollup';
 import { rollup } from 'rollup';
@@ -12,6 +12,24 @@ import {
   normalizeEntry,
   resolveTsConfig,
 } from './utils';
+
+const run = async (command: string, cwd: string) => {
+  return new Promise<void>((resolve, reject) => {
+    const [cmd, ...args] = command.split(' ');
+    const app = spawn(cmd, args, {
+      cwd,
+      stdio: 'inherit',
+      shell: process.platform === 'win32',
+    });
+    const onProcessExit = () => app.kill('SIGHUP');
+    app.on('close', (code) => {
+      process.removeListener('exit', onProcessExit);
+      if (code === 0) resolve();
+      else reject(new Error(`Command failed. \n Command: ${command} \n Code: ${code}`));
+    });
+    process.on('exit', onProcessExit);
+  });
+};
 
 export async function compileTypes(root: string, options: UserOptions) {
   const { outDir = 'dist', tempDir = path.join(outDir, '.temp') } = options;
@@ -38,15 +56,7 @@ export async function compileTypes(root: string, options: UserOptions) {
 
   args.push('--project', tsconfig.path);
 
-  const { error } = sync('node', args, {
-    stdio: 'inherit',
-    cwd: root,
-    env: process.env,
-  });
-
-  if (error) {
-    throw error;
-  }
+  await run(tscPath + ' ' + args.join(' '), root);
 
   return typesOutDir;
 }
