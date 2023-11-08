@@ -21,18 +21,18 @@
     ".": {
       "require": "./dist/index.cjs",
       "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.cts"
     },
     "./transformer": {
       "require": "./dist/transformer.cjs",
       "import": "./dist/transformer.js",
-      "types": "./dist/transformer.d.ts"
+      "types": "./dist/transformer.d.cts"
     },
     "./*": "./*"
   },
   "main": "dist/index.js",
   "module": "dist/index.mjs",
-  "typings": "dist/index.d.ts",
+  "typings": "dist/index.d.cts",
   "files": [
     "dist",
     "transformer.d.ts",

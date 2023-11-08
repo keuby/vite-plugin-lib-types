@@ -1,12 +1,11 @@
 import type {
-  PreRenderedChunk,
+  NormalizedOutputOptions,
   NullValue,
   PluginContext,
+  PreRenderedChunk,
   RenderedChunk,
-  NormalizedOutputOptions,
 } from 'rollup';
 import type { Options } from 'rollup-plugin-dts';
-import type { CompilerOptions } from 'typescript';
 
 export type MaybePromise<T> = T | Promise<T>;
 
@@ -22,6 +21,7 @@ export interface UserOptions extends Pick<Options, 'respectExternal'> {
   tsconfigPath?: string;
   outDir?: string;
   tempDir?: string;
+  pluginHook?: 'configResolved' | 'renderStart';
   noEmit?: boolean;
   fileName?: string | ((chunk: PreRenderedChunk) => string);
   transformers?: Transformer[];
