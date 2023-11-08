@@ -40,7 +40,7 @@ export async function compileTypes(root: string, options: UserOptions) {
   const hasVue = tsconfig.include.some((item) => item.includes('.vue'));
 
   const tscPath = hasVue
-    ? require.resolve('vue-tsc/bin/tsc')
+    ? require.resolve('vue-tsc/bin/vue-tsc')
     : require.resolve('typescript/lib/tsc');
 
   const command: string[] = ['node', tscPath];
