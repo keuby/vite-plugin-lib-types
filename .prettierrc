@@ -9,5 +9,6 @@
   "eslintIntegration": true,
   "semi": true,
   "vueIndentScriptAndStyle": false,
-  "printWidth": 90
+  "printWidth": 90,
+  "plugins": ["prettier-plugin-organize-imports", "prettier-plugin-packagejson"]
 }

@@ -1,37 +1,27 @@
 {
   "name": "vite-plugin-lib-types",
-  "version": "2.0.4",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "typings": "dist/index.d.ts",
-  "type": "module",
-  "scripts": {
-    "build": "vite build",
-    "test": "vitest --run",
-    "prepack": "pnpm test && pnpm build"
-  },
-  "engines": {
-    "node": "^16.0.0",
-    "pnpm": "^8.0.0"
-  },
+  "version": "3.0.0",
+  "keywords": [
+    "vite",
+    "vite-plugin",
+    "vite plugin",
+    "typescript",
+    "dts"
+  ],
+  "homepage": "https://github.com/keuby/vite-plugin-lib-types/blob/main/README.md",
   "bugs": {
     "url": "https://github.com/keuby/vite-plugin-lib-types/issues"
   },
-  "homepage": "https://github.com/keuby/vite-plugin-lib-types/blob/main/README.md",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/keuby/vite-plugin-lib-types.git"
   },
+  "type": "module",
   "exports": {
     ".": {
       "require": "./dist/index.cjs",
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
-    },
-    "./parser": {
-      "require": "./dist/parser.cjs",
-      "import": "./dist/parser.js",
-      "types": "./dist/parser.d.ts"
     },
     "./transformer": {
       "require": "./dist/transformer.cjs",
@@ -40,48 +30,48 @@
     },
     "./*": "./*"
   },
-  "keywords": [
-    "vite",
-    "vite-plugin",
-    "vite plugin",
-    "typescript",
-    "dts"
-  ],
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "typings": "dist/index.d.ts",
   "files": [
     "dist",
-    "parser.d.ts",
     "transformer.d.ts",
     "README.md"
   ],
+  "scripts": {
+    "build": "tsup",
+    "prepack": "pnpm build"
+  },
   "dependencies": {
-    "@babel/core": "^7.22.11",
-    "@babel/preset-typescript": "^7.22.11",
-    "@rollup/pluginutils": "^5.0.4",
-    "fast-glob": "^3.3.1",
+    "@babel/core": "^7.23.2",
+    "@rollup/pluginutils": "^5.0.5",
+    "cross-spawn": "^7.0.3",
     "fs-extra": "^11.1.1",
-    "magic-string": "^0.30.3",
+    "magic-string": "^0.30.5",
     "pathe": "^1.1.1",
-    "rollup": "^3.28.1",
-    "rollup-plugin-dts": "^6.0.0",
-    "ts-morph": "^19.0.0",
-    "tsconfig": "^7.0.0"
+    "rollup": "^4.3.0",
+    "rollup-plugin-dts": "^6.1.0",
+    "tsconfig": "^7.0.0",
+    "vue-tsc": "^1.8.22"
   },
   "devDependencies": {
-    "@babel/types": "^7.22.11",
-    "@types/babel__core": "^7.20.1",
-    "@types/fs-extra": "^11.0.1",
-    "@types/node": "^20.5.7",
-    "@typescript-eslint/eslint-plugin": "^6.5.0",
-    "@typescript-eslint/parser": "^6.5.0",
-    "@vitest/coverage-istanbul": "^0.34.3",
+    "@types/babel__core": "^7.20.4",
+    "@types/cross-spawn": "^6.0.5",
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^20.9.0",
+    "@typescript-eslint/eslint-plugin": "^6.10.0",
+    "@typescript-eslint/parser": "^6.10.0",
+    "@vitest/coverage-istanbul": "^0.34.6",
     "@vue/tsconfig": "^0.4.0",
-    "eslint": "^8.48.0",
+    "eslint": "^8.53.0",
     "eslint-config-prettier": "^9.0.0",
-    "eslint-plugin-prettier": "^5.0.0",
+    "eslint-plugin-prettier": "^5.0.1",
     "prettier": "^3.0.3",
+    "prettier-plugin-organize-imports": "^3.2.3",
+    "prettier-plugin-packagejson": "^2.4.6",
+    "tsup": "^7.2.0",
     "typescript": "^5.2.2",
-    "vite": "^4.4.9",
-    "vitest": "^0.34.3"
+    "vite": "^4.5.0"
   },
   "peerDependencies": {
     "vite": "^2.0.0 || ^3.0.0 || ^4.0.0",
@@ -92,8 +82,12 @@
       "optional": true
     }
   },
+  "engines": {
+    "node": "^16.0.0",
+    "pnpm": "^8.0.0"
+  },
   "publishConfig": {
-    "registry": "https://registry.npmjs.org/",
-    "access": "public"
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   }
 }

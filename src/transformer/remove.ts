@@ -1,7 +1,6 @@
-import type { Comment, Node, TSType } from '@babel/types';
-import type { Transformer } from '../types';
-import { type NodePath, transformAsync } from '@babel/core';
+import { transformAsync, type NodePath, type types } from '@babel/core';
 import MagicString from 'magic-string';
+import type { Transformer } from '../types';
 
 export interface RemoveTransformerOptions {
   annotationTags?: string[];
@@ -36,7 +35,7 @@ export function createRemoveTransformer(options: RemoveTransformerOptions): Tran
     const removed = new Set<string>();
     const noop = () => false;
 
-    const getRemoveTags = (comments: Comment[]): string[] => {
+    const getRemoveTags = (comments: types.Comment[]): string[] => {
       const ignoreTagNames: string[] = [];
       for (const comment of comments) {
         const name = getIgnoredTag(comment.value);
@@ -45,7 +44,7 @@ export function createRemoveTransformer(options: RemoveTransformerOptions): Tran
       return ignoreTagNames;
     };
 
-    const tryRemoveTSType = (annotation: TSType) => {
+    const tryRemoveTSType = (annotation: types.TSType) => {
       switch (annotation.type) {
         case 'TSTypeLiteral':
           annotation.members.forEach(tryRemoveNode);
@@ -71,7 +70,7 @@ export function createRemoveTransformer(options: RemoveTransformerOptions): Tran
     const tryRemoveWithAnnotationTags =
       annotationTags.length === 0
         ? noop
-        : (node: Node): boolean => {
+        : (node: types.Node): boolean => {
             const comments = node.leadingComments ?? [];
             const removeTags = getRemoveTags(comments);
 
@@ -98,7 +97,7 @@ export function createRemoveTransformer(options: RemoveTransformerOptions): Tran
 
     const tryRemoveEmptyImport = !removeEmptyImport
       ? noop
-      : (node: Node): boolean => {
+      : (node: types.Node): boolean => {
           if (node.type === 'ImportDeclaration' && node.specifiers.length === 0) {
             const { start, end } = node;
             if (start != null && end != null) {
@@ -109,7 +108,7 @@ export function createRemoveTransformer(options: RemoveTransformerOptions): Tran
           return false;
         };
 
-    const tryRemoveNode = (node: Node) => {
+    const tryRemoveNode = (node: types.Node) => {
       switch (true) {
         case tryRemoveWithAnnotationTags(node):
           return true;
@@ -177,7 +176,7 @@ export function createRemoveTransformer(options: RemoveTransformerOptions): Tran
           case 'TSInterfaceDeclaration':
           case 'TSEnumDeclaration':
           case 'TSTypeAliasDeclaration':
-            removed.add(path.node.id.name);
+            removed.add(path.node.id!.name);
             break;
         }
       }

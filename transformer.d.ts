@@ -1,2 +1,2 @@
-export * from './dist/parser';
-export { default } from './dist/parser';
+export * from './dist/transformer.cts';
+export { default } from './dist/transformer.cts';

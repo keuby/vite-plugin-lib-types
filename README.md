@@ -28,21 +28,13 @@ export default defineConfig({
 });
 ```
 
-TypeScript support:
-
-| version | typescript 4.x | typescript 5.x |
-| ------- | -------------- | -------------- |
-| 1.x     | ✅             | ❌             |
-| 2.x     | ❌             | ✅             |
-
 ## Options
 
-| name         | type                 | default                 | description                                            |
-| ------------ | -------------------- | ----------------------- | ------------------------------------------------------ |
-| tsconfig     | `object`             | `undefined`             | override the value of tsconfig                         |
-| tsconfigPath | `string`             | `${root}/tsconfig.json` | path of tsconfig                                       |
-| outDir       | `string`             | `undefined`             | dts file output path                                   |
-| tempDir      | `string`             | `${outDir}/.temp`       | temp dts file output path                              |
-| fileName     | `string \| function` | `[]`                    | custom dts file names                                  |
-| parsers      | `Parser[]`           | `[]`                    | custom source file processing, like the webpack loader |
-| transformers | `Parser[]`           | `[]`                    | Custom dts file transformer                            |
+| name         | type                 | default                 | description                    |
+| ------------ | -------------------- | ----------------------- | ------------------------------ |
+| tsconfig     | `object`             | `undefined`             | override the value of tsconfig |
+| tsconfigPath | `string`             | `${root}/tsconfig.json` | path of tsconfig               |
+| outDir       | `string`             | `undefined`             | dts file output path           |
+| tempDir      | `string`             | `${outDir}/.temp`       | temp dts file output path      |
+| fileName     | `string \| function` | `[]`                    | custom dts file names          |
+| transformers | `Parser[]`           | `[]`                    | Custom dts file transformer    |

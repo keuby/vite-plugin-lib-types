@@ -1,9 +1,8 @@
-import type { Plugin } from 'vite';
-import type { EmittedAsset } from 'rollup';
-import type { UserOptions } from './types';
 import fs from 'fs-extra';
-import path from 'pathe';
-import { buildTypes, createProject } from './build';
+import type { EmittedAsset } from 'rollup';
+import type { Plugin } from 'vite';
+import { buildTypes, compileTypes } from './build';
+import type { UserOptions } from './types';
 
 export default function VitePluginLibTypes(options: UserOptions = {}): Plugin {
   const emitFiles: EmittedAsset[] = [];
@@ -17,14 +16,11 @@ export default function VitePluginLibTypes(options: UserOptions = {}): Plugin {
 
       if (!entry) return;
 
-      const tempDir = path.resolve(root, options.tempDir ?? outDir, '.temp');
-      await fs.mkdir(tempDir, { recursive: true });
+      let tempDir: string | null = null;
+
       try {
-        const project = await createProject(root, {
-          ...options,
-          tempDir,
-        });
-        await project.emit({ emitOnlyDtsFiles: true });
+        tempDir = await compileTypes(root, { ...options, outDir });
+        if (!tempDir) return;
 
         const outputOptions = config.build.rollupOptions.output;
         const chunks = await buildTypes(root, {
@@ -43,7 +39,7 @@ export default function VitePluginLibTypes(options: UserOptions = {}): Plugin {
           });
         }
       } finally {
-        await fs.rm(tempDir, { recursive: true });
+        tempDir && (await fs.rm(tempDir, { recursive: true }));
       }
     },
     buildEnd(err?) {

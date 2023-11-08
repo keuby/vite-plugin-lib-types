@@ -26,10 +26,7 @@ export function formatTsConfigPattern(
 }
 
 export async function resolveTsConfig(root: string, options: UserOptions) {
-  const {
-    tsconfig: { include: inputInclude, exclude: inputExclude, compilerOptions = {} } = {},
-    tsconfigPath = await resolve(root),
-  } = options;
+  const { tsconfigPath = await resolve(root) } = options;
 
   if (!tsconfigPath) {
     throw new Error('tsconfig not found');
@@ -40,14 +37,11 @@ export async function resolveTsConfig(root: string, options: UserOptions) {
   const [include, exclude, extraInclude = [], extraExclude = []] = await Promise.all([
     formatTsConfigPattern(root, tsconfig.include ?? ['**/*.{ts,tsx}']),
     formatTsConfigPattern(root, tsconfig.exclude ?? ['node_modules/**', 'dist/**']),
-    inputInclude && formatTsConfigPattern(root, inputInclude),
-    inputExclude && formatTsConfigPattern(root, inputExclude),
   ]);
   return {
     path: tsconfigPath,
     include: deduplicate(include.concat(extraInclude)),
     exclude: deduplicate(exclude.concat(extraExclude)),
-    compilerOptions,
   };
 }
 

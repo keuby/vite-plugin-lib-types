@@ -1,87 +1,54 @@
-import type { OutputOptions, InputOptions } from 'rollup';
+import { sync } from 'cross-spawn';
 import path from 'pathe';
-import { Project } from 'ts-morph';
-import glob from 'fast-glob';
-import fs from 'fs-extra';
+import type { InputOptions, OutputOptions } from 'rollup';
 import { rollup } from 'rollup';
-import dts from 'rollup-plugin-dts';
+import { dts } from 'rollup-plugin-dts';
+import { ignoreModules, patchTypes } from './rollup-plugins';
+import type { UserOptions } from './types';
 import {
-  resolveTsConfig,
   getPkgJson,
   getPkgName,
-  normalizeEntry,
   isPlainObject,
+  normalizeEntry,
+  resolveTsConfig,
 } from './utils';
-import type { UserOptions } from './types';
-import { createVueParser } from './parser';
-import { patchTypes, ignoreModules } from './rollup-plugins';
 
-export async function createProject(root: string, options: UserOptions) {
-  const {
-    parsers = [createVueParser()],
-    outDir = 'dist',
-    tempDir = path.join(outDir, '.temp'),
-  } = options;
+export async function compileTypes(root: string, options: UserOptions) {
+  const { outDir = 'dist', tempDir = path.join(outDir, '.temp') } = options;
 
-  const typesAbsoluteDir = path.resolve(root, tempDir);
+  const typesOutDir = !options.noEmit ? path.resolve(root, tempDir) : null;
 
   const tsconfig = await resolveTsConfig(root, options);
+  const hasVue = tsconfig.include.some((item) => item.includes('.vue'));
 
-  const project = new Project({
-    compilerOptions: {
-      ...tsconfig.compilerOptions,
-      rootDir: root,
-      baseUrl: root,
-      outDir: typesAbsoluteDir,
-      declaration: true,
-      preserveSymlinks: true,
-    },
-    tsConfigFilePath: tsconfig.path,
-    skipAddingFilesFromTsConfig: true,
-  });
+  const tscPath = hasVue
+    ? require.resolve('vue-tsc/bin/tsc')
+    : require.resolve('typescript/lib/tsc');
 
-  const files = await glob(tsconfig.include, {
-    cwd: root,
-    ignore: tsconfig.exclude,
-    absolute: true,
-    onlyFiles: true,
-  });
+  const args: string[] = ['node'];
 
-  const parseFile = async (filePath: string, code: string) => {
-    for (const parser of parsers) {
-      const parseResult = await parser.apply(project, [code, { root, filePath }]);
-      if (parseResult != null) {
-        return parseResult;
-      }
-    }
-    return null;
-  };
-
-  await Promise.all(
-    files.map(async (file) => {
-      const rawCode = await fs.readFile(file, 'utf-8');
-      const parsedResult = await parseFile(file, rawCode);
-      if (parsedResult == null) {
-        project.addSourceFileAtPath(file);
-      } else if (typeof parsedResult === 'string') {
-        project.createSourceFile(file, parsedResult);
-      } else if (typeof parsedResult === 'object') {
-        const { code, fileName } = parsedResult;
-        project.createSourceFile(
-          fileName ? path.join(path.dirname(file), fileName) : file,
-          code,
-        );
-      }
-    }),
-  );
-
-  const diagnostics = project.getPreEmitDiagnostics();
-  if (diagnostics.length > 0) {
-    console.log(project.formatDiagnosticsWithColorAndContext(diagnostics));
-    throw new Error('typings compile error');
+  if (typesOutDir) {
+    args.push('--outDir', typesOutDir);
+    args.push('--rootDir', root);
+    args.push('--declaration');
+    args.push('--emitDeclarationOnly');
+  } else {
+    args.push('--noEmit');
   }
 
-  return project;
+  args.push('--project', tsconfig.path);
+
+  const { error } = sync('node', args, {
+    stdio: 'inherit',
+    cwd: root,
+    env: process.env,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return typesOutDir;
 }
 
 export interface BuildTypesOptions extends UserOptions {
@@ -104,7 +71,6 @@ export async function buildTypes(root: string, options: BuildTypesOptions) {
       dts({
         respectExternal,
         tsconfig: tsconfig.path,
-        compilerOptions: tsconfig.compilerOptions,
       }),
       patchTypes(root, options),
       ignoreModules(typesTempDir, tsconfig),
