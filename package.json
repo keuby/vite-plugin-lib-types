@@ -44,6 +44,7 @@
   },
   "dependencies": {
     "@babel/core": "^7.23.2",
+    "@babel/preset-typescript": "^7.23.2",
     "@rollup/pluginutils": "^5.0.5",
     "fs-extra": "^11.1.1",
     "magic-string": "^0.30.5",
