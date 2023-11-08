@@ -43,20 +43,20 @@ export async function compileTypes(root: string, options: UserOptions) {
     ? require.resolve('vue-tsc/bin/tsc')
     : require.resolve('typescript/lib/tsc');
 
-  const args: string[] = ['node'];
+  const command: string[] = ['node', tscPath];
 
   if (typesOutDir) {
-    args.push('--outDir', typesOutDir);
-    args.push('--rootDir', root);
-    args.push('--declaration');
-    args.push('--emitDeclarationOnly');
+    command.push('--outDir', typesOutDir);
+    command.push('--rootDir', root);
+    command.push('--declaration');
+    command.push('--emitDeclarationOnly');
   } else {
-    args.push('--noEmit');
+    command.push('--noEmit');
   }
 
-  args.push('--project', tsconfig.path);
+  command.push('--project', tsconfig.path);
 
-  await run(tscPath + ' ' + args.join(' '), root);
+  await run(command.join(' '), root);
 
   return typesOutDir;
 }
