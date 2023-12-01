@@ -229,7 +229,7 @@ export function createRemoveTransformer(options: RemoveTransformerOptions): Tran
         .replaceAll(/import type/g, 'import')
         .replaceAll(
           /import\s*{([^}]+)}/g,
-          (_, $1) => `export {${$1.replace(/type\s+/g, '')}}`,
+          (_, $1) => `import {${$1.replace(/type\s+/g, '')}}`,
         );
     }
 
