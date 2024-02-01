@@ -92,6 +92,8 @@ export async function buildTypes(root: string, options: BuildTypesOptions) {
 
   if (!fileName && !isPlainObject(entry) && Object.keys(normalizedEntries).length === 1) {
     fileName = getPkgName(getPkgJson(root).name) + '.d.ts';
+  } else if (typeof fileName === 'string' && !path.extname(fileName)) {
+    fileName += '.d.ts';
   }
 
   const result = await bundle.generate({
