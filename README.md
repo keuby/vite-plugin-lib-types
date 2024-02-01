@@ -1,6 +1,6 @@
 # vite-plugin-lib-types
 
-A vite plugin that can automatically generate dts files
+Generate dts file while building library, supports vue file
 
 ## Usage
 
@@ -35,6 +35,5 @@ export default defineConfig({
 | tsconfig     | `object`             | `undefined`             | override the value of tsconfig |
 | tsconfigPath | `string`             | `${root}/tsconfig.json` | path of tsconfig               |
 | outDir       | `string`             | `undefined`             | dts file output path           |
-| tempDir      | `string`             | `${outDir}/.temp`       | temp dts file output path      |
 | fileName     | `string \| function` | `[]`                    | custom dts file names          |
-| transformers | `Parser[]`           | `[]`                    | Custom dts file transformer    |
+| transformers | `Transformer[]`      | `[]`                    | Custom dts file transformer    |
